@@ -330,7 +330,7 @@ create_config() {
                     "serverNames": ["$DOMAIN"],
                     "privateKey": "$PRIVATE_KEY",
                     "publicKey": "$PUBLIC_KEY",
-                    "shortIds": [$(IFS=,; echo "${SHORT_IDS[*]}")]
+                    "shortIds": ["$(IFS=\",\"; echo "${SHORT_IDS[*]}")"]
                 }
             },
             "sniffing": {
