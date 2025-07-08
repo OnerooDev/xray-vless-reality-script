@@ -19,43 +19,65 @@ check_ipv6() {
     fi
 }
 
-# IP version selection with validation
 select_ip_version() {
+    # check IPv6
+    check_ipv6
+    
     if [[ "$1" == "install" ]]; then
         echo -e "\n${YELLOW}Select IP version:${NC}"
-        [[ "$IPV6_AVAILABLE" == true ]] && echo "1. IPv4 (default)"
-        [[ "$IPV6_AVAILABLE" == true ]] && echo "2. IPv6"
+        echo "1. IPv4 (default)"
+        
+        # Show IPv6 if available
+        if $IPV6_AVAILABLE; then
+            echo "2. IPv6"
+            max_choice=2
+        else
+            max_choice=1
+        fi
         
         while true; do
-            read -p "Your choice [1-2]: " choice
+            read -p "Your choice [1-$max_choice]: " choice
             case $choice in
-                1|"") 
+                1|"")
                     USE_IPV6=false
+                    echo -e "${GREEN}Selected IPv4${NC}"
                     break
                     ;;
                 2)
                     if $IPV6_AVAILABLE; then
                         USE_IPV6=true
+                        echo -e "${GREEN}Selected IPv6${NC}"
                         break
                     else
                         echo -e "${RED}IPv6 not available on this server!${NC}"
                     fi
                     ;;
                 *)
-                    echo -e "${RED}Invalid choice!${NC}"
+                    echo -e "${RED}Invalid choice! Please enter 1 or ${max_choice}${NC}"
                     ;;
             esac
         done
     else
-        # For non-install mode
+        # Reconfig mode
         if $IPV6_AVAILABLE; then
+            current_version="IPv$( [[ "$USE_IPV6" == true ]] && echo "6" || echo "4")"
+            echo -e "\n${YELLOW}Current IP version: $current_version${NC}"
             read -p "Switch to IPv6? [y/N]: " switch
-            [[ "$switch" =~ [yY] ]] && USE_IPV6=true || USE_IPV6=false
+            if [[ "$switch" =~ [yY] ]]; then
+                USE_IPV6=true
+                echo -e "${GREEN}Switched to IPv6${NC}"
+            else
+                USE_IPV6=false
+                echo -e "${GREEN}Keeping IPv4${NC}"
+            fi
         else
             USE_IPV6=false
             echo -e "${YELLOW}IPv6 not available, using IPv4${NC}"
         fi
     fi
+    
+    # logs
+    echo -e "${BLUE}Using IPv$( [[ "$USE_IPV6" == true ]] && echo "6" || echo "4") configuration${NC}"
 }
 
 # Get current server IP
@@ -481,8 +503,8 @@ main_menu() {
             echo "1. Generate new UUID"
             echo "2. Generate new x25519 keys"
             echo "3. Change domain"
-            echo "4. Add shortId"
-            echo "5. Remove shortId"
+            echo "4. Add client (shortId)"
+            echo "5. Remove client (shortId)"
             echo "6. Show client config (QR)"
             echo "7. Change IP v4 or v6"
             echo "8. Check Firewall"
