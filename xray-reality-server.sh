@@ -493,7 +493,6 @@ main_menu() {
     if ! check_xray_installed; then
         echo -e "${YELLOW}Xray not found. Installing...${NC}"
         install_xray
-        create_config
         generate_client_config
     else
         load_config
