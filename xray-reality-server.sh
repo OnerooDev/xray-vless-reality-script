@@ -224,6 +224,34 @@ check_ports() {
     return 0
 }
 
+check_write_permissions() {
+    local dir="/usr/local/etc/xray"
+    
+    # Создать директорию если не существует
+    if [ ! -d "$dir" ]; then
+        echo -e "${YELLOW}Dir xray config creation $dir${NC}"
+        mkdir -p "$dir" || {
+            echo -e "${RED}error: Failed dir creation $dir${NC}"
+            return 1
+        }
+    fi
+    
+    # Проверить права
+    if [ ! -w "$dir" ]; then
+        echo -e "${YELLOW}Trying change rights on $dir${NC}"
+        chown -R root:root "$dir"
+        chmod -R 755 "$dir"
+        
+        if [ ! -w "$dir" ]; then
+            echo -e "${RED}Error: No rights to write $dir${NC}"
+            echo -e "${YELLOW}Try to use manually: sudo chown -R $(whoami) $dir${NC}"
+            return 1
+        fi
+    fi
+    
+    return 0
+}
+
 #Install xray
 install_xray() {
     check_ipv6
@@ -295,13 +323,16 @@ check_tls1_3() {
 
 # Create initial config
 create_config() {
-    check_tls1_3
-    generate_uuid
-    generate_keys
-    generate_short_ids
+    check_tls1_3 || return 1
+    generate_uuid || return 1
+    generate_keys || return 1
+    generate_short_ids || return 1
+    check_write_permissions || return 1
+
+    local temp_file=$(mktemp)
+
     
-    
-    CONFIG=$(cat <<EOF
+    cat > "$temp_file" <<EOF
 {
     "log": {
         "loglevel": "debug"
@@ -327,7 +358,7 @@ create_config() {
                     "serverNames": ["$DOMAIN"],
                     "privateKey": "$PRIVATE_KEY",
                     "publicKey": "$PUBLIC_KEY",
-                    "shortIds": ["$(IFS=\",\"; echo "${SHORT_IDS[*]}")"]
+                    "shortIds": $(printf '%s\n' "${SHORT_IDS[@]}" | jq -R . | jq -s .)
                 }
             },
             "sniffing": {
@@ -341,22 +372,34 @@ create_config() {
         {
             "protocol": "freedom",
             "tag": "direct",
-            "settings": {
-            }
+            "settings": {}
         }
     ]
 }
 EOF
-)
 
-    CONFIG=$(jq --argjson ipv6only "$USE_IPV6" \
-                '.inbounds[0].ipv6only = $ipv6only |
-                 .outbounds[0].settings.domainStrategy = (if $ipv6only then "UseIPv6" else "UseIP" end)' \
-                <<< "$CONFIG")
+    # Add IP version settings
+    jq --argjson ipv6only "$USE_IPV6" \
+       '.inbounds[0].ipv6only = $ipv6only |
+        .outbounds[0].settings.domainStrategy = (if $ipv6only then "UseIPv6" else "UseIP" end)' \
+       "$temp_file" > "$CONFIG_FILE"
 
-    echo "$CONFIG" > "$CONFIG_FILE"
-    echo -e "${GREEN}Config updated at $CONFIG_FILE${NC}"
-    systemctl restart $SERVICE_NAME
+    # Check file exists
+    if [ ! -s "$CONFIG_FILE" ]; then
+        echo -e "${RED}Error: Failed to create configuration file${NC}"
+        return 1
+    fi
+
+    # Validate JSON
+    if ! jq empty "$CONFIG_FILE" 2>/dev/null; then
+        echo -e "${RED}Error: Invalid JSON configuration${NC}"
+        return 1
+    fi
+
+    echo -e "${GREEN}Configuration successfully created at $CONFIG_FILE${NC}"
+    systemctl restart "$SERVICE_NAME"
+    rm -f "$temp_file"
+    return 0
 }
 
 # Load existing config
