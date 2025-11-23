@@ -273,7 +273,7 @@ install_xray() {
     fi
     
     echo -e "${YELLOW}Installing Xray...${NC}"
-    bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+    bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install --version 25.8.3
     
     # Fix systemd service file
     sudo sed -i 's/User=nobody/User=root/' /etc/systemd/system/xray.service
