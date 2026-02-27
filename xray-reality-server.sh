@@ -498,7 +498,7 @@ generate_client_config() {
     SELECTED_SHORT_ID=$(echo "$SELECTED_SHORT_ID" | tr -d '"')
 
     # Gen link vless://
-    VLESS_LINK="vless://${UUID}@${CURRENT_IP}:443?security=reality&encryption=none&pbk=${PUBLIC_KEY}&host=${DOMAIN}&headerType=none&fp=chrome&type=tcp&flow=xtls-rprx-vision&sid=${SELECTED_SHORT_ID}#xray-reality-${SELECTED_SHORT_ID}"
+    VLESS_LINK="vless://${UUID}@${CURRENT_IP}:443?security=reality&encryption=none&pbk=${PUBLIC_KEY}&host=${DOMAIN}&sni=${DOMAIN}&headerType=none&fp=chrome&type=tcp&flow=xtls-rprx-vision&sid=${SELECTED_SHORT_ID}#xray-reality-${SELECTED_SHORT_ID}"
 
     echo -e "\n${YELLOW}Client configuration:${NC}"
     echo -e "${GREEN}${VLESS_LINK}${NC}"
